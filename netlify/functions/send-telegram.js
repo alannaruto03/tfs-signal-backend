@@ -1,20 +1,25 @@
-// api/send-telegram.js
-export default async function handler(req, res) {
-  // Your secrets go here. In a real project, use environment variables.
+// netlify/functions/send-telegram.js
+
+exports.handler = async function(event) {
+  // IMPORTANT: Make sure to replace these with your actual token and ID
   const botToken = '7720666332:AAFU5DMiCpTyvYBUb7dF80otB5_FQ6z514A';
   const chatId = '831719613';
 
-  // Get the message from the request sent by the React app
-  const { message } = req.body;
+  // Netlify passes the request body as a string, so we need to parse it
+  const body = JSON.parse(event.body);
+  const { message } = body;
 
   if (!message) {
-    return res.status(400).json({ error: 'Message is required' });
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: 'Message is required' }),
+    };
   }
 
   const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
 
   try {
-    await fetch(url, {
+    const telegramResponse = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -25,8 +30,26 @@ export default async function handler(req, res) {
         parse_mode: 'Markdown',
       }),
     });
-    res.status(200).json({ success: true });
+
+    if (!telegramResponse.ok) {
+        const errorData = await telegramResponse.json();
+        console.error('Telegram API Error:', errorData);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ error: 'Failed to send message to Telegram.' }),
+        };
+    }
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ success: true }),
+    };
+
   } catch (error) {
-    res.status(500).json({ error: 'Failed to send message' });
+    console.error('Function Error:', error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Failed to send message.' }),
+    };
   }
-}
+};
